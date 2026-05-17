@@ -8,3 +8,4 @@ db.sqlite3
 models/*.joblib
 reports/*.png
 reports/*.json
+staticfiles/
