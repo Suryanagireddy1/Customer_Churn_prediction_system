@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Customer Churn Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Telco retention model</p>
+        <h1>Customer Churn Prediction</h1>
+      </div>
+      <div class="model-chip">{{ best_model|replace("_", " ")|title if best_model else "Model ready" }}</div>
+    </header>
+
+    <main class="layout">
+      <section class="tool-panel">
+        <div class="section-heading">
+          <div>
+            <h2>Predict customer risk</h2>
+            <p>Enter customer profile and service details.</p>
+          </div>
+          {% if prediction %}
+            <div class="risk-pill {{ prediction.tone }}">
+              {{ prediction.label }}
+              <strong>{{ prediction.percentage }}%</strong>
+            </div>
+          {% endif %}
+        </div>
+
+        {% if error %}
+          <p class="error">{{ error }}</p>
+        {% endif %}
+
+        <form method="post" class="prediction-form">
+          <fieldset>
+            <legend>Account</legend>
+            <label>
+              Gender
+              <select name="gender">
+                {% for option in metadata.categorical_options.gender %}
+                  <option value="{{ option }}" {% if form_values.gender == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              Senior Citizen
+              <select name="SeniorCitizen">
+                <option value="0" {% if form_values.SeniorCitizen == "0" %}selected{% endif %}>No</option>
+                <option value="1" {% if form_values.SeniorCitizen == "1" %}selected{% endif %}>Yes</option>
+              </select>
+            </label>
+            <label>
+              Partner
+              <select name="Partner">
+                {% for option in metadata.categorical_options.Partner %}
+                  <option value="{{ option }}" {% if form_values.Partner == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              Dependents
+              <select name="Dependents">
+                {% for option in metadata.categorical_options.Dependents %}
+                  <option value="{{ option }}" {% if form_values.Dependents == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              Tenure
+              <input type="number" name="tenure" min="0" max="90" step="1" value="{{ form_values.tenure }}">
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Services</legend>
+            {% for field in ["PhoneService", "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport", "StreamingTV", "StreamingMovies"] %}
+              <label>
+                {{ field|replace("Service", " Service")|replace("Lines", " Lines")|replace("Security", " Security")|replace("Backup", " Backup")|replace("Protection", " Protection")|replace("Support", " Support")|replace("TV", " TV")|replace("Movies", " Movies") }}
+                <select name="{{ field }}">
+                  {% for option in metadata.categorical_options[field] %}
+                    <option value="{{ option }}" {% if form_values[field] == option %}selected{% endif %}>{{ option }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+            {% endfor %}
+          </fieldset>
+
+          <fieldset>
+            <legend>Billing</legend>
+            <label>
+              Contract
+              <select name="Contract">
+                {% for option in metadata.categorical_options.Contract %}
+                  <option value="{{ option }}" {% if form_values.Contract == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              Paperless Billing
+              <select name="PaperlessBilling">
+                {% for option in metadata.categorical_options.PaperlessBilling %}
+                  <option value="{{ option }}" {% if form_values.PaperlessBilling == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              Payment Method
+              <select name="PaymentMethod">
+                {% for option in metadata.categorical_options.PaymentMethod %}
+                  <option value="{{ option }}" {% if form_values.PaymentMethod == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              Monthly Charges
+              <input type="number" name="MonthlyCharges" min="0" step="0.01" value="{{ form_values.MonthlyCharges }}">
+            </label>
+            <label>
+              Total Charges
+              <input type="number" name="TotalCharges" min="0" step="0.01" value="{{ form_values.TotalCharges }}">
+            </label>
+          </fieldset>
+
+          <div class="form-actions">
+            <button type="submit">Predict churn</button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="insights-panel">
+        <section class="metric-strip">
+          <div>
+            <span>ROC AUC</span>
+            <strong>{{ "%.3f"|format(best_metrics.roc_auc) if best_metrics.roc_auc is defined else "n/a" }}</strong>
+          </div>
+          <div>
+            <span>Recall</span>
+            <strong>{{ "%.3f"|format(best_metrics.recall) if best_metrics.recall is defined else "n/a" }}</strong>
+          </div>
+          <div>
+            <span>Precision</span>
+            <strong>{{ "%.3f"|format(best_metrics.precision) if best_metrics.precision is defined else "n/a" }}</strong>
+          </div>
+        </section>
+
+        {% if prediction %}
+          <section class="result-panel {{ prediction.tone }}">
+            <span>Churn probability</span>
+            <strong>{{ prediction.percentage }}%</strong>
+            <p>{{ prediction.label }} based on the current profile.</p>
+          </section>
+        {% else %}
+          <section class="result-panel empty">
+            <span>Churn probability</span>
+            <strong>Ready</strong>
+            <p>Submit a profile to estimate churn risk.</p>
+          </section>
+        {% endif %}
+
+        <section class="chart-panel">
+          <h2>Model signals</h2>
+          <img src="{{ url_for('reports', filename='top_features.png') }}" alt="Top model signals chart">
+        </section>
+        <section class="chart-panel">
+          <h2>Validation</h2>
+          <img src="{{ url_for('reports', filename='roc_curve.png') }}" alt="ROC curve chart">
+        </section>
+      </aside>
+    </main>
+  </body>
+</html>
+

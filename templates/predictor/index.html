@@ -1,0 +1,122 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Customer Churn Prediction</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Telco retention model</p>
+        <h1>Customer Churn Prediction</h1>
+      </div>
+      <div class="model-chip">{{ best_model_label }}</div>
+    </header>
+
+    <main class="layout">
+      <section class="tool-panel">
+        <div class="section-heading">
+          <div>
+            <h2>Predict customer risk</h2>
+            <p>Enter customer profile and service details.</p>
+          </div>
+          {% if prediction %}
+            <div class="risk-pill {{ prediction.tone }}">
+              {{ prediction.label }}
+              <strong>{{ prediction.percentage }}%</strong>
+            </div>
+          {% endif %}
+        </div>
+
+        {% if form.non_field_errors %}
+          <div class="error">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <form method="post" class="prediction-form">
+          {% csrf_token %}
+
+          <fieldset>
+            <legend>Account</legend>
+            {% for field in account_fields %}
+              <label for="{{ field.id_for_label }}">
+                {{ field.label }}
+                {{ field }}
+                {% if field.errors %}<span class="field-error">{{ field.errors|striptags }}</span>{% endif %}
+              </label>
+            {% endfor %}
+          </fieldset>
+
+          <fieldset>
+            <legend>Services</legend>
+            {% for field in service_fields %}
+              <label for="{{ field.id_for_label }}">
+                {{ field.label }}
+                {{ field }}
+                {% if field.errors %}<span class="field-error">{{ field.errors|striptags }}</span>{% endif %}
+              </label>
+            {% endfor %}
+          </fieldset>
+
+          <fieldset>
+            <legend>Billing</legend>
+            {% for field in billing_fields %}
+              <label for="{{ field.id_for_label }}">
+                {{ field.label }}
+                {{ field }}
+                {% if field.errors %}<span class="field-error">{{ field.errors|striptags }}</span>{% endif %}
+              </label>
+            {% endfor %}
+          </fieldset>
+
+          <div class="form-actions">
+            <button type="submit">Predict churn</button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="insights-panel">
+        <section class="metric-strip">
+          <div>
+            <span>ROC AUC</span>
+            <strong>{% if best_metrics.roc_auc %}{{ best_metrics.roc_auc|floatformat:3 }}{% else %}n/a{% endif %}</strong>
+          </div>
+          <div>
+            <span>Recall</span>
+            <strong>{% if best_metrics.recall %}{{ best_metrics.recall|floatformat:3 }}{% else %}n/a{% endif %}</strong>
+          </div>
+          <div>
+            <span>Precision</span>
+            <strong>{% if best_metrics.precision %}{{ best_metrics.precision|floatformat:3 }}{% else %}n/a{% endif %}</strong>
+          </div>
+        </section>
+
+        {% if prediction %}
+          <section class="result-panel {{ prediction.tone }}">
+            <span>Churn probability</span>
+            <strong>{{ prediction.percentage }}%</strong>
+            <p>{{ prediction.label }} based on the current profile.</p>
+          </section>
+        {% else %}
+          <section class="result-panel empty">
+            <span>Churn probability</span>
+            <strong>Ready</strong>
+            <p>Submit a profile to estimate churn risk.</p>
+          </section>
+        {% endif %}
+
+        <section class="chart-panel">
+          <h2>Model signals</h2>
+          <img src="{% url 'predictor:report_file' 'top_features.png' %}" alt="Top model signals chart">
+        </section>
+        <section class="chart-panel">
+          <h2>Validation</h2>
+          <img src="{% url 'predictor:report_file' 'roc_curve.png' %}" alt="ROC curve chart">
+        </section>
+      </aside>
+    </main>
+  </body>
+</html>
+
